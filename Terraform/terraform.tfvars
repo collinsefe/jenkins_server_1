@@ -57,7 +57,7 @@ ecs_task_family           = "jenkins-master"
 ecs_task_network_mode     = "bridge"
 ecs_task_volume_name      = "data-volume"
 ecs_task_volume_host_path = "/data/"
-# ecs_task_image            = "jenkinsci/jnlp-slave"
+# ecs_task_image          = "jenkinsci/jnlp-slave"
 ecs_task_container_path   = "/var/jenkins_home"
 
 # ECS - template for user_data
@@ -65,11 +65,11 @@ ecs_user_data_efs_mountpoint = "/data"
 ecs_user_data_efs_owner      = "1000"
 
 # ECS - launch configuration
-lc_name                     = "jenkins_lc"
+lc_name                     = "ecs_lc"
 ecs_lc_image_id             = "ami-4cbe0935"
 ami_id                      = "ami-4cbe0935"
 image_id                    = "ami-4cbe0935"
-ecs_task_image              = "jenkins/jenkins"
+ecs_task_image              = "ticketfly/jenkins-example-aws-ecs"
 ecs_lc_instance_type        = "t2.medium"
 instance_type               = "t2.medium"
 

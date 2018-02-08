@@ -4,6 +4,22 @@
 yum check-update -y
 
 # Install required applications
+sudo yum -y update
+sudo yum install -y git zip unzip
+sudo yum install -y docker.io 
+sudo add-apt-repository ppa:webupd8team/java
+sudo yum -y update
+sudo yum install -y java-1.8.0-openjdk.x86_64
+sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java
+sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac
+sudo yum -y remove java-1.7
+sudo yum -y install wget
+sudo yum install -y zip unzip git
+sudo wget https://releases.hashicorp.com/terraform/0.9.8/terraform_0.9.8_linux_amd64.zip
+sudo unzip terraform_0.9.8_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+sudo yum update -y aws-cli
+sudo yum install git vim nano -y
 
 # Install NFS client required packages
 echo "Installing NFS client required packages"
@@ -46,7 +62,9 @@ fi
 
 # Add instance to the ECS cluster
 echo "Adding instance to the ECS cluster"
-echo "ECS_CLUSTER=${ecs_cluster_name}" >> /etc/ecs/ecs.config
+#echo ECS_CLUSTER='${ecs_cluster_name}' >> /etc/ecs/ecs.config
+echo ECS_CLUSTER='${ecs_cluster_name}' > /etc/ecs/ecs.config
+
 
 # Restart ECS and Docker
 echo "Restarting ECS and Docker"

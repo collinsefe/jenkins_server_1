@@ -6,6 +6,25 @@ provider "aws" {
   region = "eu-west-1"
 }
 
+
+data "template_file" "ecs_container_def" {
+  template = "${file("policies/ecs_ontainer_def.json")}"
+}
+
+
+data "template_file" "user_data_jenkins_ecs" {
+  template = "${file("user_data_jenkins_ecs.sh")}"
+}
+
+data "template_file" "assume_role_policy" {
+  template = "${file("policies/ecs_assume_role.json")}"
+}
+
+data "template_file" "ecs_jenkins_policy" {
+  template = "${file("policies/ecs_policy.json")}"
+}
+
+
 # -------------------
 # Jenkins ECS Cluster
 # -------------------
@@ -20,13 +39,18 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 resource "aws_ecs_task_definition" "ecs_task_definition" {
   family       = "${var.ecs_task_family}"
   network_mode = "${var.ecs_task_network_mode}"
+  container_definitions = "${data.template_file.ecs_container_def.rendered}"
+
 
   volume {
     name      = "${var.ecs_task_volume_name}"
     host_path = "${var.ecs_task_volume_host_path}"
   }
+  
+}
+  
 
-  container_definitions = <<EOF
+  /*<<EOF
 [
   {
     "name": "${var.ecs_task_family}",
@@ -43,7 +67,7 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
     "memory": 992,
     "portMappings": [
       {
-        "hostPort": 8080,
+        "hostPort": 80,
         "containerPort": 8080,
         "protocol": "tcp"
       },
@@ -53,7 +77,7 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
         "protocol": "tcp"
       },
        {
-        "hostPort": 80,
+        "hostPort": 8080,
         "containerPort": 80,
         "protocol": "tcp"
       }
@@ -62,6 +86,8 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
 ]
 EOF
 }
+*/
+
 
 ############################
 # SECURITY GROUPS#
@@ -130,24 +156,26 @@ resource "aws_security_group" "jenkins_sg" {
 ##########################
 
 resource "aws_instance" "jenkins_server" {
-  ami                  = "${var.ami_id}"
-  instance_type        = "${var.instance_type}"
-  user_data            = "${var.user_data}"
-  subnet_id            = "${var.subnet_id}"
-  key_name             = "${var.key_name}"
-  security_groups      = ["${aws_security_group.jenkins_sg.id}"]
-  iam_instance_profile = "${module.jenkins_ec2_instance.jenkins_ec2_instance_profile_name}"
+  ami             = "${var.ami_id}"
+  instance_type   = "${var.instance_type}"
+  user_data       = "${var.user_data}"
+  subnet_id       = "${var.subnet_id}"
+  key_name        = "${var.key_name}"
+  security_groups = ["${aws_security_group.jenkins_sg.id}"]
+  user_data       = "${data.template_file.user_data_jenkins_ecs.rendered}"
 
+  #echo ECS_CLUSTER='${ecs_cluster_name}' > /etc/ecs/ecs.config
+
+  iam_instance_profile = "${module.jenkins_ec2_instance.jenkins_ec2_instance_profile_name}"
+  
   connection {
-    user        = "ubuntu"
+    user        = "ec2-user"
     private_key = "${file(var.private_key_path)}"
     file_name   = "${var.file_name}"
   }
-
   lifecycle {
     create_before_destroy = true
   }
-
   tags {
     Name                   = "jenkins-server"
     Author                 = "corighose"
@@ -214,6 +242,12 @@ module "jenkins_elb" {
 resource "aws_iam_role" "jenkins_ecs_role" {
   name = "jenkins-ecs-role"
 
+  assume_role_policy =  "${data.template_file.assume_role_policy.rendered}"
+}
+
+
+  /*
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -232,6 +266,7 @@ resource "aws_iam_role" "jenkins_ecs_role" {
 }
 EOF
 }
+*/
 
 # -----------------------
 # ECS Service Role Policy
@@ -239,9 +274,9 @@ EOF
 resource "aws_iam_role_policy" "jenkins_ecs_policy" {
   name = "jenkins-ecs-policy"
   role = "${aws_iam_role.jenkins_ecs_role.id}"
+  policy = "${data.template_file.ecs_jenkins_policy.rendered}"
 
-  #policy = "${data.template_file.ecs_assume_policy.rendered}"
-
+/*
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -263,6 +298,7 @@ resource "aws_iam_role_policy" "jenkins_ecs_policy" {
 }
 EOF
 }
+*/
 
 ########################
 # Jenkins ECS Service
@@ -285,8 +321,8 @@ resource "aws_ecs_service" "jenkins_ecs_service" {
 # ------------
 # Auto Scaling
 # ------------
-data "template_file" "user_data_jenkins_ecs" {
-  template = "${file("user_data_jenkins_ecs.sh")}"
+
+  user_date           = "${data.template_file.user_data_jenkins_ecs.rendered}"
 
   vars {
     ecs_cluster_name     = "${var.ecs_cluster_name}"
@@ -326,12 +362,19 @@ module "efs" {
 }
 
 resource "aws_launch_configuration" "jenkins_lc" {
-  name_prefix          = "lc_${var.ecs_cluster_name}-"
-  image_id             = "${var.ecs_lc_image_id}"
-  instance_type        = "${var.ecs_lc_instance_type}"
-  iam_instance_profile = "${module.jenkins_ec2_instance.jenkins_ec2_instance_profile_name}"
-  key_name             = "${var.key_name}"
-  security_groups      = ["${aws_security_group.jenkins_sg.id}"]
+  name_prefix                 = "lc_${var.ecs_cluster_name}-"
+  image_id                    = "${var.ecs_lc_image_id}"
+  instance_type               = "${var.ecs_lc_instance_type}"
+  iam_instance_profile        = "${module.jenkins_ec2_instance.jenkins_ec2_instance_profile_name}"
+  key_name                    = "${var.key_name}"
+  security_groups             = ["${aws_security_group.jenkins_sg.id}"]
+  #associate_public_ip_address = "${var.associate_public_ip_address}"
+  user_data                   = "${data.template_file.user_data_jenkins_ecs.rendered}"
+  enable_monitoring           = "${var.enable_monitoring}"
+  placement_tenancy           = "${var.placement_tenancy}"
+  ebs_optimized               = "${var.ebs_optimized}"
+ 
+
 
   #subnet_id             =  ["${var.subnet_ids}"]
 
@@ -354,7 +397,7 @@ resource "aws_launch_configuration" "jenkins_lc" {
   root_block_device           = "${var.root_block_device}"
 */
 
-  associate_public_ip_address = "false"
+  associate_public_ip_address = false
 
   #load_balancers = ["${module.jenkins_elb.jenkins_elb_id}"]
 
@@ -364,6 +407,8 @@ resource "aws_launch_configuration" "jenkins_lc" {
       volume_type           = "gp2"
       volume_size           = "50"
       delete_on_termination = true
+
+      # encrypt             = true
     },
   ]
   root_block_device = [
@@ -438,7 +483,7 @@ module "jenkins_scale_up_alarm" {
   source = "modules/cloudwatch"
 
   alarm_name        = "${var.customer_name}_jenkins_scale_up_alarm"
-  alarm_description = "CPU utilization peaked at 70% during the last minute"
+  alarm_description = "CPU utilization peaked at 60% during the last minute"
   alarm_actions     = ["${aws_autoscaling_policy.jenkins_scale_up_policy.arn}"]
 
   dimensions = {
@@ -474,7 +519,7 @@ module "jenkins_scale_down_alarm" {
   source = "modules/cloudwatch"
 
   alarm_name        = "${var.customer_name}_jenkins_scale_down_alarm"
-  alarm_description = "CPU utilization is under 50% for the last 10 min..."
+  alarm_description = "CPU utilization is under 50% for the last 5 min..."
   alarm_actions     = ["${aws_autoscaling_policy.jenkins_scale_down_policy.arn}"]
 
   dimensions = {
