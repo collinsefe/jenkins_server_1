@@ -4,12 +4,12 @@
 	
 private_key_path 	      =   "/Users/corighose/Documents/aws/collinskeypair01.pem"
 jenkins_state_file	    = 	"tf_jenkins.tfstate"
-tf_s3_bucket 		        =	  "tf-state-dcuk074-jenkins-dev"
+tf_s3_bucket 		        =	  "tf-state-collinsefe-jenkins-dev"
 subnet_id 			        = 	"subnet-94d288dd"
 subnet_ids			        =	  ["subnet-94d288dd", "subnet-b3f06ce8"]
 subnets				          =	  ["subnet-94d288dd", "subnet-b3f06ce8"]
 vpc_id                  = 	"vpc-5194b536"
-customer_name				    =	  "corighose"
+customer_name				    =	  "collinsefe"
 environment			        =	  "dev"
 region                  =   "eu-west-1"
 key_name                =   "collinskeypair01"
